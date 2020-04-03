@@ -112,7 +112,7 @@ class MainSystem(tkinter.Tk):
         thres = 1 - 0.05
         for i in range(self.img_bgr.shape[0]):
             for j in range(self.img_bgr.shape[1]):
-                rdn = random.random()  # 返回随机的浮点数，在半开区间 [0.0, 1.0)
+                rdn = random.random()  # 返回随机的浮点数，在半开区间 [0.0, main)
                 if rdn < 0.05:
                     output[i, j] = 0
                 elif rdn > thres:
