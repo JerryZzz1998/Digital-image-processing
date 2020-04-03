@@ -230,6 +230,10 @@ class MainSystem(tkinter.Tk):
     def SSR(self):
         pass
 
+    def MSR(self):
+        pass
+
+
 if __name__ == "__main__":
     System = MainSystem()
     System.mainloop()
