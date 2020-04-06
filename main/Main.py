@@ -36,8 +36,7 @@ class MainSystem(tkinter.Tk):
         self.SetMenu.add_command(label='添加椒盐噪声', command=self.SaltAndPepperNoise)
         self.SetMenu.add_command(label='添加高斯噪声', command=self.GaussianNoise)
         self.SetMenu.add_command(label='运动模糊')
-        self.SetMenu.add_command(label='测试用例',
-                                 command=self.AdaptiveEquColor_2)  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
+        self.SetMenu.add_command(label='测试用例', command=self.MSRCR)  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
         # 将子菜单添加到主菜单
         self.BigMenu.add_cascade(label='文件', menu=self.FileMenu)
         self.BigMenu.add_cascade(label='选项', menu=self.SetMenu)
@@ -227,10 +226,46 @@ class MainSystem(tkinter.Tk):
         output = cv2.cvtColor(ycrcb, cv2.COLOR_YCR_CB2BGR)
         cv2.imshow("dst", output)
 
-    def SSR(self):
-        pass
+    def MSRCR(self, beta=46.0, alpha=125.0, G=5.0, b=25.0, low_clip=0.01, high_clip=0.99):
 
+        sigma_list = [15, 80, 250]
 
+        # multiScaleRetinex
+        img = np.float64(self.img_bgr) + 1.0  # 防止0取对数的情况发生
+        img_retinex = np.zeros_like(img)
+        for sigma in sigma_list:
+            img_retinex += np.log10(img) - np.log10(cv2.GaussianBlur(img, (0, 0), sigma))
+            print(sigma)
+        img_retinex = img_retinex / len(sigma_list)
+
+        # colorRestoration
+        img_sum = np.sum(img, axis=2, keepdims=True)
+        img_color = beta * (np.log10(alpha * img) - np.log10(img_sum))
+
+        # 经验公式
+        img_msrcr = G * (img_retinex * img_color + b)
+
+        for i in range(img_msrcr.shape[2]):
+            img_msrcr[:, :, i] = (img_msrcr[:, :, i] - np.min(img_msrcr[:, :, i])) / \
+                                 (np.max(img_msrcr[:, :, i]) - np.min(img_msrcr[:, :, i])) * \
+                                 255
+
+        img_msrcr = np.uint8(np.minimum(np.maximum(img_msrcr, 0), 255))
+
+        total = img_msrcr.shape[0] * img_msrcr.shape[1]
+        for i in range(img_msrcr.shape[2]):
+            unique, counts = np.unique(img_msrcr[:, :, i], return_counts=True)
+            current = 0
+            for u, c in zip(unique, counts):
+                if float(current) / total < low_clip:
+                    low_val = u
+                if float(current) / total < high_clip:
+                    high_val = u
+                current += c
+
+            img_msrcr[:, :, i] = np.maximum(np.minimum(img_msrcr[:, :, i], high_val), low_val)
+
+        cv2.imshow("MSRCR", img_msrcr)
 
 
 if __name__ == "__main__":

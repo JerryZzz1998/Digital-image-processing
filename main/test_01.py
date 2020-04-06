@@ -2,6 +2,6 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-o = cv2.imread(r'C:\Users\lenovo\Desktop\thing\project\image\house.jpg', cv2.IMREAD_GRAYSCALE)
-plt.hist(o.ravel(), 256)
-plt.show()
+x = np.array([[3, 0, 0], [0, 4, 0], [5, 6, 0]])
+y = (x!=0)
+print(y)
