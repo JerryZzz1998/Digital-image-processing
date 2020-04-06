@@ -36,7 +36,7 @@ class MainSystem(tkinter.Tk):
         self.SetMenu.add_command(label='添加椒盐噪声', command=self.SaltAndPepperNoise)
         self.SetMenu.add_command(label='添加高斯噪声', command=self.GaussianNoise)
         self.SetMenu.add_command(label='运动模糊')
-        self.SetMenu.add_command(label='测试用例', command=self.MSRCR)  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
+        self.SetMenu.add_command(label='测试用例', command=self.MSRCP)  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
         # 将子菜单添加到主菜单
         self.BigMenu.add_cascade(label='文件', menu=self.FileMenu)
         self.BigMenu.add_cascade(label='选项', menu=self.SetMenu)
@@ -55,6 +55,9 @@ class MainSystem(tkinter.Tk):
         # 高斯滤波按钮
         self.BtnGaussFil = tkinter.Button(self.SmoothImg, text='高斯滤波', command=self.GaussFilter)
         self.BtnGaussFil.pack()
+        # 维纳滤波按钮
+        self.BtnWienerFil = tkinter.Button(self.SmoothImg, text='维纳滤波', command=self.WienerFilter)
+        self.BtnWienerFil.pack(pady=10)
 
         # 图像的形态学操作
         self.Morphology = LabelFrame(self, text='形态学操作', labelanchor='n', padx=10, pady=10)
@@ -78,13 +81,25 @@ class MainSystem(tkinter.Tk):
         self.BtnBlackHat = tkinter.Button(self.Morphology, text='黑帽运算', command=self.BlackHat)
         self.BtnBlackHat.pack(pady=10)
 
-        # 亮度提升
-        self.Morphology = LabelFrame(self, text='形态学操作', labelanchor='n', padx=10, pady=10)
-        self.Morphology.grid(column=1, row=0, sticky='n')
+        # 亮度增强
+        self.Bright = LabelFrame(self, text='亮度增强', labelanchor='n', padx=10, pady=10)
+        self.Bright.grid(column=2, row=0, sticky='n')
+        # 直方图均衡
+        self.BtnEquColor = tkinter.Button(self.Bright, text='直方图均衡', command=self.EquColor)
+        self.BtnEquColor.pack()
+        # 自适应直方图均衡
+        self.BtnApEquColor = tkinter.Button(self.Bright, text='自适应直方图均衡', command=self.AdaptiveEquColor_2)
+        self.BtnApEquColor.pack(pady=10)
+        # 伽马变换
+        self.BtnGammaTras = Button(self.Bright, text='伽马变换', command=self.GammaTransform)
+        self.BtnGammaTras.pack()
+        # MSRCR算法
+        self.BtnMSRCR = Button(self.Bright, text='MSRCR算法', command=self.MSRCR)
+        self.BtnMSRCR.pack(pady=10)
 
     def SetMainWindow(self):
         self.title("图像增强系统v1.2")
-        self.geometry('500x500')
+        self.geometry('500x400')
         self.iconbitmap(r'C:\Users\lenovo\Desktop\thing\project\image\toolbox.ico')
 
     def OpenImg(self):
@@ -226,6 +241,7 @@ class MainSystem(tkinter.Tk):
         output = cv2.cvtColor(ycrcb, cv2.COLOR_YCR_CB2BGR)
         cv2.imshow("dst", output)
 
+    # RF:A Multiscale Retinex for Bridging the Gap Between Color Images and the Human Observation of Scenes
     def MSRCR(self, beta=46.0, alpha=125.0, G=5.0, b=25.0, low_clip=0.01, high_clip=0.99):
 
         sigma_list = [15, 80, 250]
@@ -234,7 +250,7 @@ class MainSystem(tkinter.Tk):
         img = np.float64(self.img_bgr) + 1.0  # 防止0取对数的情况发生
         img_retinex = np.zeros_like(img)
         for sigma in sigma_list:
-            img_retinex += np.log10(img) - np.log10(cv2.GaussianBlur(img, (0, 0), sigma))
+            img_retinex += np.log10(img) - np.log10(cv2.GaussianBlur(img, (0, 0), sigma))  # 主要是此步骤计算时间过长
             print(sigma)
         img_retinex = img_retinex / len(sigma_list)
 
@@ -251,7 +267,7 @@ class MainSystem(tkinter.Tk):
                                  255
 
         img_msrcr = np.uint8(np.minimum(np.maximum(img_msrcr, 0), 255))
-
+        # simplestColorBalance
         total = img_msrcr.shape[0] * img_msrcr.shape[1]
         for i in range(img_msrcr.shape[2]):
             unique, counts = np.unique(img_msrcr[:, :, i], return_counts=True)
@@ -266,6 +282,57 @@ class MainSystem(tkinter.Tk):
             img_msrcr[:, :, i] = np.maximum(np.minimum(img_msrcr[:, :, i], high_val), low_val)
 
         cv2.imshow("MSRCR", img_msrcr)
+
+    def MSRCP(self, low_clip=0.01, high_clip=0.99):
+        sigma_list = [15, 80, 250]
+        img = np.float64(self.img_bgr) + 1.0
+
+        intensity = np.sum(img, axis=2) / img.shape[2]
+
+        img_retinex = np.zeros_like(intensity)
+        for sigma in sigma_list:
+            img_retinex += np.log10(intensity) - np.log10(cv2.GaussianBlur(img, (0, 0), sigma))
+            print(sigma)
+        img_retinex = img_retinex / len(sigma_list)
+
+        intensity = np.expand_dims(intensity, 2)
+        img_retinex = np.expand_dims(img_retinex, 2)
+
+        total = img_retinex.shape[0] * img_retinex.shape[1]
+
+        for i in range(img_retinex.shape[2]):
+            unique, counts = np.unique(img_retinex[:, :, i], return_counts=True)
+            current = 0
+            for u, c in zip(unique, counts):
+                if float(current) / total < low_clip:
+                    low_val = u
+                if float(current) / total < high_clip:
+                    high_val = u
+                current += c
+            img_retinex[:, :, i] = np.maximum(np.minimum(img_retinex[:, :, i], high_val), low_val)
+
+        intensity1 = img_retinex
+
+        intensity1 = (intensity1 - np.min(intensity1)) / \
+                     (np.max(intensity1) - np.min(intensity1)) * \
+                     255.0 + 1.0
+
+        img_msrcp = np.zeros_like(self.img_bgr)
+
+        for y in range(img_msrcp.shape[0]):
+            for x in range(img_msrcp.shape[1]):
+                B = np.max(img[y, x])
+                A = np.minimum(256.0 / B, intensity1[y, x, 0] / intensity[y, x, 0])
+                img_msrcp[y, x, 0] = A * img[y, x, 0]
+                img_msrcp[y, x, 1] = A * img[y, x, 1]
+                img_msrcp[y, x, 2] = A * img[y, x, 2]
+
+        img_msrcp = np.uint8(img_msrcp - 1.0)
+
+        cv2.imshow("MSRCP", img_msrcp)
+
+
+
 
 
 if __name__ == "__main__":
