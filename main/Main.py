@@ -143,8 +143,8 @@ class MainSystem(tkinter.Tk):
         var : 方差
         """
         img = np.array(self.img_bgr / 255, dtype=float)
-        noise = np.random.normal(mean, var ** 0.5, img.shape)
-        output = img + noise
+        noise = np.random.normal(mean, var ** 0.5, img.shape)  # 标准正态分布
+        output = img + noise   # 加性噪声
         output = np.clip(output, 0.0, 1.0)  # 防止像素溢出
         output = np.uint8(output * 255)
         self.img_noise = output
@@ -330,9 +330,6 @@ class MainSystem(tkinter.Tk):
         img_msrcp = np.uint8(img_msrcp - 1.0)
 
         cv2.imshow("MSRCP", img_msrcp)
-
-
-
 
 
 if __name__ == "__main__":
