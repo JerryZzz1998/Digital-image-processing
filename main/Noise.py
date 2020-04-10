@@ -39,7 +39,7 @@ def SaltAndPepperNoise(img, prob):
     return output
 
 
-img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip_2.jpg')
+img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip.png')
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -59,11 +59,32 @@ plt.imshow(noise_2), plt.axis('off')
 plt.show()
 '''''
 
+
+'''''
 noise_guass = GaussianNoise(img)
 
 plt.figure("高斯噪声")
-ax = plt.subplot(121)
+plt.subplot(121)
 plt.imshow(img), plt.axis('off'), plt.title('origin')
-ax = plt.subplot(122)
+plt.subplot(122)
 plt.imshow(noise_guass), plt.axis('off'), plt.title('Gaussian noise')
 plt.show()
+'''''
+
+noise_guass = GaussianNoise(img)
+noise_salt = SaltAndPepperNoise(img, 0.05)
+blur_origin = cv2.blur(img, (5, 5))
+blur_gauss = cv2.blur(noise_guass, (5, 5))
+blur_salt = cv2.blur(noise_salt, (5, 5))
+plt.figure("均值滤波")
+plt.subplot(221)
+plt.imshow(noise_salt), plt.axis('off'), plt.title('noise_salt')
+plt.subplot(222)
+plt.imshow(blur_salt), plt.axis('off'), plt.title('blur_salt')
+plt.subplot(223)
+plt.imshow(noise_guass), plt.axis('off'), plt.title('noise_guass')
+plt.subplot(224)
+plt.imshow(blur_gauss), plt.axis('off'), plt.title('blur_gauss')
+plt.show()
+
+
