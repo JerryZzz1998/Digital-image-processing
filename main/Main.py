@@ -13,11 +13,13 @@ class MainSystem(tkinter.Tk):
         # 设置图片属性
         self.FilePath = None
         self.img_bgr = None
+        self.img_rgb = None
         self.img_gray = None
         self.img_b = None
         self.img_g = None
         self.img_r = None
         self.img_noise = None
+        self.img_noise_shake = None
         # 设置窗口属性
         self.SetMainWindow()
         # 创建主菜单
@@ -35,8 +37,8 @@ class MainSystem(tkinter.Tk):
         self.SetMenu.add_separator()
         self.SetMenu.add_command(label='添加椒盐噪声', command=self.SaltAndPepperNoise)
         self.SetMenu.add_command(label='添加高斯噪声', command=self.GaussianNoise)
-        self.SetMenu.add_command(label='运动模糊')
-        self.SetMenu.add_command(label='测试用例', command=self.MSRCP)  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
+        self.SetMenu.add_command(label='仿运动模糊', command=self.MotionBlur)
+        self.SetMenu.add_command(label='测试用例')  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
         # 将子菜单添加到主菜单
         self.BigMenu.add_cascade(label='文件', menu=self.FileMenu)
         self.BigMenu.add_cascade(label='选项', menu=self.SetMenu)
@@ -105,6 +107,7 @@ class MainSystem(tkinter.Tk):
     def OpenImg(self):
         self.FilePath = filedialog.askopenfilename(parent=self, title='打开图片')
         self.img_bgr = cv2.imread(self.FilePath)
+        self.img_rgb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2RGB)
         self.img_gray = cv2.imread(self.FilePath, cv2.IMREAD_GRAYSCALE)
         self.img_b, self.img_g, self.img_r = cv2.split(self.img_bgr)  # 通道拆分
 
@@ -144,14 +147,11 @@ class MainSystem(tkinter.Tk):
         """
         img = np.array(self.img_bgr / 255, dtype=float)
         noise = np.random.normal(mean, var ** 0.5, img.shape)  # 标准正态分布
-        output = img + noise   # 加性噪声
+        output = img + noise  # 加性噪声
         output = np.clip(output, 0.0, 1.0)  # 防止像素溢出
         output = np.uint8(output * 255)
         self.img_noise = output
         cv2.imshow("dst", output)
-
-    def MotionProcess(self):
-        pass
 
     def MeanFilter(self):
         if self.img_noise is not None:
@@ -283,53 +283,22 @@ class MainSystem(tkinter.Tk):
 
         cv2.imshow("MSRCR", img_msrcr)
 
-    def MSRCP(self, low_clip=0.01, high_clip=0.99):
-        sigma_list = [15, 80, 250]
-        img = np.float64(self.img_bgr) + 1.0
+    def MotionBlur(self, degree=12, angle=60):
 
-        intensity = np.sum(img, axis=2) / img.shape[2]
+        # 这里是得到任意角度的运动模糊卷积核矩阵，矩阵越大越模糊
+        mat = cv2.getRotationMatrix2D((degree / 2, degree / 2), angle, 1)  # 获得仿射变换矩阵
 
-        img_retinex = np.zeros_like(intensity)
-        for sigma in sigma_list:
-            img_retinex += np.log10(intensity) - np.log10(cv2.GaussianBlur(img, (0, 0), sigma))
-            print(sigma)
-        img_retinex = img_retinex / len(sigma_list)
+        kernel = np.diag(np.ones(degree))
 
-        intensity = np.expand_dims(intensity, 2)
-        img_retinex = np.expand_dims(img_retinex, 2)
+        kernel = cv2.warpAffine(kernel, mat, (degree, degree))
 
-        total = img_retinex.shape[0] * img_retinex.shape[1]
-
-        for i in range(img_retinex.shape[2]):
-            unique, counts = np.unique(img_retinex[:, :, i], return_counts=True)
-            current = 0
-            for u, c in zip(unique, counts):
-                if float(current) / total < low_clip:
-                    low_val = u
-                if float(current) / total < high_clip:
-                    high_val = u
-                current += c
-            img_retinex[:, :, i] = np.maximum(np.minimum(img_retinex[:, :, i], high_val), low_val)
-
-        intensity1 = img_retinex
-
-        intensity1 = (intensity1 - np.min(intensity1)) / \
-                     (np.max(intensity1) - np.min(intensity1)) * \
-                     255.0 + 1.0
-
-        img_msrcp = np.zeros_like(self.img_bgr)
-
-        for y in range(img_msrcp.shape[0]):
-            for x in range(img_msrcp.shape[1]):
-                B = np.max(img[y, x])
-                A = np.minimum(256.0 / B, intensity1[y, x, 0] / intensity[y, x, 0])
-                img_msrcp[y, x, 0] = A * img[y, x, 0]
-                img_msrcp[y, x, 1] = A * img[y, x, 1]
-                img_msrcp[y, x, 2] = A * img[y, x, 2]
-
-        img_msrcp = np.uint8(img_msrcp - 1.0)
-
-        cv2.imshow("MSRCP", img_msrcp)
+        kernel = kernel / degree
+        # 将卷积核应用到图像上，并转化为uint8
+        output = cv2.filter2D(self.img_bgr, -1, kernel)
+        cv2.normalize(output, output, 0, 255, cv2.NORM_MINMAX)
+        output = np.array(output, dtype=np.uint8)
+        self.img_noise_shake = output
+        cv2.imshow("Motion Blur", output)
 
 
 if __name__ == "__main__":
