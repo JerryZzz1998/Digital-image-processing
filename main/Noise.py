@@ -1,8 +1,14 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import pylab
 import cv2
 
+#设置汉字格式
+# sans-serif就是无衬线字体，是一种通用字体族。
+# 常见的无衬线字体有 Trebuchet MS, Tahoma, Verdana, Arial, Helvetica,SimHei 中文的幼圆、隶书等等
+pylab.rcParams['font.sans-serif'] = ['FangSong']  # 指定默认字体
+pylab.rcParams['axes.unicode_minus'] = False  # 解决保存图像是负号'-'显示为方块的问题
 
 def GaussianNoise(img, mean=0, var=0.01):
     """
@@ -39,7 +45,8 @@ def SaltAndPepperNoise(img, prob):
     return output
 
 
-img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip.png')
+
+img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip_2.jpg')
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -71,6 +78,7 @@ plt.imshow(noise_guass), plt.axis('off'), plt.title('Gaussian noise')
 plt.show()
 '''''
 
+'''''
 noise_guass = GaussianNoise(img)
 noise_salt = SaltAndPepperNoise(img, 0.05)
 blur_origin = cv2.blur(img, (5, 5))
@@ -78,13 +86,64 @@ blur_gauss = cv2.blur(noise_guass, (5, 5))
 blur_salt = cv2.blur(noise_salt, (5, 5))
 plt.figure("均值滤波")
 plt.subplot(221)
-plt.imshow(noise_salt), plt.axis('off'), plt.title('noise_salt')
+plt.imshow(noise_salt), plt.axis('off'), plt.title(u"椒盐噪声")
 plt.subplot(222)
-plt.imshow(blur_salt), plt.axis('off'), plt.title('blur_salt')
+plt.imshow(noise_guass), plt.axis('off'), plt.title(u"高斯噪声")
 plt.subplot(223)
-plt.imshow(noise_guass), plt.axis('off'), plt.title('noise_guass')
+plt.imshow(blur_salt), plt.axis('off'), plt.title(u"均值滤波去除椒盐噪声")
 plt.subplot(224)
-plt.imshow(blur_gauss), plt.axis('off'), plt.title('blur_gauss')
+plt.imshow(blur_gauss), plt.axis('off'), plt.title(u"均值滤波去除高斯噪声")
 plt.show()
+'''''
 
+'''''
+noise = np.random.normal(0, 0.01 ** 0.5, img.shape)
+noise = noise * 255
+noise = np.clip(noise, 0.0, 255.0)
+noise_guas = GaussianNoise(img)
+
+plt.figure("高斯噪声")
+plt.subplot(131)
+plt.imshow(img), plt.axis('off'), plt.title('Src')
+plt.subplot(132)
+plt.imshow(noise), plt.axis('off'), plt.title('Noise')
+plt.subplot(133)
+plt.imshow(noise_guas), plt.axis('off'), plt.title('Dst')
+plt.show()
+'''''
+
+'''''
+noise_guass = GaussianNoise(img)
+noise_salt = SaltAndPepperNoise(img, 0.05)
+dst_1 = cv2.GaussianBlur(noise_guass, (7, 7), 0, 0)
+dst_2 = cv2.GaussianBlur(noise_salt, (7,7), 0, 0)
+plt.figure("高斯滤波")
+plt.subplot(221)
+plt.imshow(noise_guass), plt.axis('off'), plt.title(u"高斯噪声")
+plt.subplot(222)
+plt.imshow(noise_salt), plt.axis('off'), plt.title(u"椒盐噪声")
+plt.subplot(223)
+plt.imshow(dst_1), plt.axis('off'), plt.title(u"高斯滤波去除高斯噪声")
+plt.subplot(224)
+plt.imshow(dst_2), plt.axis('off'), plt.title(u"高斯滤波去除椒盐噪声")
+plt.show()
+'''''
+
+'''''
+noise_guass = GaussianNoise(img)
+noise_salt = SaltAndPepperNoise(img, 0.05)
+blur_origin = cv2.medianBlur(img, 3)
+blur_gauss = cv2.medianBlur(noise_guass, 3)
+blur_salt = cv2.medianBlur(noise_salt, 3)
+plt.figure("中值滤波")
+plt.subplot(221)
+plt.imshow(noise_salt), plt.axis('off'), plt.title(u"椒盐噪声")
+plt.subplot(222)
+plt.imshow(noise_guass), plt.axis('off'), plt.title(u"高斯噪声")
+plt.subplot(223)
+plt.imshow(blur_salt), plt.axis('off'), plt.title(u"中值滤波去除椒盐噪声")
+plt.subplot(224)
+plt.imshow(blur_gauss), plt.axis('off'), plt.title(u"中值滤波去除高斯噪声")
+plt.show()
+'''''
 
