@@ -20,6 +20,7 @@ class MainSystem(tkinter.Tk):
         self.img_r = None
         self.img_noise = None
         self.img_noise_shake = None
+        self.img_current = None  # 用于保存图片
         # 设置窗口属性
         self.SetMainWindow()
         # 创建主菜单
@@ -115,7 +116,14 @@ class MainSystem(tkinter.Tk):
             cv2.imshow("image", self.img_bgr)
 
     def SaveImg(self):
-        pass
+        if self.img_current is None:
+            messagebox.showerror(title='提示信息', message='请对图片进行变更后再保存图片')
+        else:
+            ret = cv2.imwrite(r'C:/Users/lenovo/Desktop/src/src.jpg', self.img_current)
+            if ret == FALSE:
+                messagebox.showerror(title='提示信息', message='保存图片失败')
+            else:
+                messagebox.showinfo(title='提示信息', message='保存图片成功')
 
     def SaltAndPepperNoise(self):
         """
@@ -135,6 +143,7 @@ class MainSystem(tkinter.Tk):
                 else:
                     output[i, j] = self.img_bgr[i, j]
         self.img_noise = output
+        self.img_current = output
         cv2.imshow("dst", output)
 
     def GaussianNoise(self, mean=0, var=0.004):
@@ -149,6 +158,7 @@ class MainSystem(tkinter.Tk):
         output = np.clip(output, 0.0, 1.0)  # 防止像素溢出
         output = np.uint8(output * 255)
         self.img_noise = output
+        self.img_current = output
         cv2.imshow("dst", output)
 
     def MeanFilter(self):
@@ -156,6 +166,7 @@ class MainSystem(tkinter.Tk):
             output = cv2.blur(self.img_noise, (5, 5))
         else:
             output = cv2.blur(self.img_bgr, (5, 5))
+        self.img_current = output
         cv2.imshow("MeanFilter", output)
 
     def MedianFilter(self):
@@ -163,6 +174,7 @@ class MainSystem(tkinter.Tk):
             output = cv2.medianBlur(self.img_noise, 3)
         else:
             output = cv2.medianBlur(self.img_bgr, 3)
+        self.img_current = output
         cv2.imshow("MedianFilter", output)
 
     def GaussFilter(self):
@@ -170,6 +182,7 @@ class MainSystem(tkinter.Tk):
             output = cv2.GaussianBlur(self.img_noise, (7, 7), 0, 0)
         else:
             output = cv2.GaussianBlur(self.img_bgr, (7, 7), 0, 0)
+        self.img_current = output
         cv2.imshow("GaussFilter", output)
 
     def WienerFilter(self):
@@ -177,32 +190,38 @@ class MainSystem(tkinter.Tk):
 
     def EroImg(self):
         kernel = np.ones((5, 5), dtype=np.uint8)  # 设置腐蚀核的大小
-        erosion = cv2.erode(self.img_bgr, kernel)
-        cv2.imshow("Erosion", erosion)
+        output = cv2.erode(self.img_bgr, kernel)
+        self.img_current = output
+        cv2.imshow("Erosion", output)
 
     def DilateImg(self):
         kernel = np.ones((5, 5), dtype=np.uint8)
         output = cv2.dilate(self.img_bgr, kernel)
+        self.img_current = output
         cv2.imshow("Dilate", output)
 
     def OpenProcess(self):
         kernel = np.ones((10, 10), np.uint8)
         output = cv2.morphologyEx(self.img_bgr, cv2.MORPH_OPEN, kernel)
+        self.img_current = output
         cv2.imshow("Open", output)
 
     def CloseProcess(self):
         kernel = np.ones((10, 10), np.uint8)
         output = cv2.morphologyEx(self.img_bgr, cv2.MORPH_CLOSE, kernel)
+        self.img_current = output
         cv2.imshow("Close", output)
 
     def TopHat(self):
         kernel = np.ones((10, 10), np.uint8)
         output = cv2.morphologyEx(self.img_bgr, cv2.MORPH_TOPHAT, kernel)
+        self.img_current = output
         cv2.imshow("TopHat", output)
 
     def BlackHat(self):
         kernel = np.ones((10, 10), np.uint8)
         output = cv2.morphologyEx(self.img_bgr, cv2.MORPH_BLACKHAT, kernel)
+        self.img_current = output
         cv2.imshow("BlackHat", output)
 
     def GammaTransform(self, gamma=0.5):
@@ -211,6 +230,7 @@ class MainSystem(tkinter.Tk):
         Value = np.clip(Value * 255, 0, 255)  # 防止像素溢出
         Hsv[:, :, 2] = np.uint8(Value)
         output = cv2.cvtColor(Hsv, cv2.COLOR_HSV2BGR)
+        self.img_current = output
         cv2.imshow("Gamma Transform", output)
 
     def EquColor(self):  # 待画出直方图
@@ -218,6 +238,7 @@ class MainSystem(tkinter.Tk):
         v = cv2.equalizeHist(Hsv[:, :, 2])
         Hsv[:, :, 2] = v
         output = cv2.cvtColor(Hsv, cv2.COLOR_HSV2BGR)
+        self.img_current = output
         cv2.imshow("dst", output)
 
     def AdaptiveEquColor(self):
@@ -226,6 +247,7 @@ class MainSystem(tkinter.Tk):
         v = clahe.apply(Hsv[:, :, 2])
         Hsv[:, :, 2] = v
         output = cv2.cvtColor(Hsv, cv2.COLOR_HSV2BGR)
+        self.img_current = output
         cv2.imshow("dst", output)
 
     def AdaptiveEquColor_2(self):  # 有待改进
@@ -237,6 +259,7 @@ class MainSystem(tkinter.Tk):
 
         cv2.merge(channels, ycrcb)
         output = cv2.cvtColor(ycrcb, cv2.COLOR_YCR_CB2BGR)
+        self.img_current = output
         cv2.imshow("dst", output)
 
     # RF:A Multiscale Retinex for Bridging the Gap Between Color Images and the Human Observation of Scenes
@@ -279,6 +302,7 @@ class MainSystem(tkinter.Tk):
 
             img_msrcr[:, :, i] = np.maximum(np.minimum(img_msrcr[:, :, i], high_val), low_val)
 
+        self.img_current = img_msrcr
         cv2.imshow("MSRCR", img_msrcr)
 
     def MotionBlur(self, degree=12, angle=60):
@@ -296,6 +320,7 @@ class MainSystem(tkinter.Tk):
         cv2.normalize(output, output, 0, 255, cv2.NORM_MINMAX)
         output = np.array(output, dtype=np.uint8)
         self.img_noise_shake = output
+        self.img_current = output
         cv2.imshow("Motion Blur", output)
 
 

@@ -46,7 +46,7 @@ def SaltAndPepperNoise(img, prob):
 
 
 
-img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip_2.jpg')
+img = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/figure.jpg')
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 
@@ -147,3 +147,14 @@ plt.imshow(blur_gauss), plt.axis('off'), plt.title(u"中值滤波去除高斯噪
 plt.show()
 '''''
 
+kernel_1 = np.ones((5, 5), dtype=np.uint8)
+kernel_2 = np.ones((7, 7), dtype=np.uint8)
+erosion_1 = cv2.dilate(img, kernel_1)
+erosion_2 = cv2.dilate(img, kernel_2)
+plt.subplot(131)
+plt.imshow(img), plt.axis('off'), plt.title(u"原图像")
+plt.subplot(132)
+plt.imshow(erosion_1), plt.axis('off'), plt.title(u"结构元5x5")
+plt.subplot(133)
+plt.imshow(erosion_2), plt.axis('off'), plt.title(u"结构元7x7")
+plt.show()
