@@ -1,3 +1,4 @@
+import math
 import tkinter
 from tkinter import *
 from tkinter import filedialog
@@ -5,6 +6,7 @@ from tkinter import messagebox
 import cv2
 import random
 import numpy as np
+
 
 
 class MainSystem(tkinter.Tk):
@@ -21,6 +23,7 @@ class MainSystem(tkinter.Tk):
         self.img_noise = None
         self.img_noise_shake = None
         self.img_current = None  # 用于保存图片
+        self.motionkernel = None
         # 设置窗口属性
         self.SetMainWindow()
         # 创建主菜单
@@ -36,11 +39,16 @@ class MainSystem(tkinter.Tk):
         self.SetMenu.add_separator()
         self.SetMenu.add_command(label='添加椒盐噪声', command=self.SaltAndPepperNoise)
         self.SetMenu.add_command(label='添加高斯噪声', command=self.GaussianNoise)
-        self.SetMenu.add_command(label='仿运动模糊', command=self.MotionBlur)
-        self.SetMenu.add_command(label='测试用例')  # ！~~~~~~~~~~~~~~~~测试用~~~~~~~~~~~~~~~~~！
+        self.SetMenu.add_command(label='仿运动模糊', command=self.makeMotionBlur)
+        self.EvaluationMenu = tkinter.Menu(self.BigMenu, tearoff=0)
+        self.EvaluationMenu.add_command(label='信息熵', command=self.getEntropy)
+        self.EvaluationMenu.add_cascade(label='峰值信噪比', command=self.getPSNR)
+        self.EvaluationMenu.add_cascade(label='标准差', command=self.getVariance)
+        self.EvaluationMenu.add_cascade(label='亮度均值', command=self.getMean)
         # 将子菜单添加到主菜单
         self.BigMenu.add_cascade(label='文件', menu=self.FileMenu)
         self.BigMenu.add_cascade(label='选项', menu=self.SetMenu)
+        self.BigMenu.add_cascade(label='评价指标', menu=self.EvaluationMenu)
         # 将主菜单加入到界面
         self.config(menu=self.BigMenu)
 
@@ -89,18 +97,18 @@ class MainSystem(tkinter.Tk):
         self.BtnEquColor = tkinter.Button(self.Bright, text='直方图均衡', command=self.EquColor)
         self.BtnEquColor.pack()
         # 自适应直方图均衡
-        self.BtnApEquColor = tkinter.Button(self.Bright, text='自适应直方图均衡', command=self.AdaptiveEquColor_2)
+        self.BtnApEquColor = tkinter.Button(self.Bright, text='自适应直方图均衡', command=self.AdaptiveEquColor)
         self.BtnApEquColor.pack(pady=10)
         # 伽马变换
         self.BtnGammaTras = Button(self.Bright, text='伽马变换', command=self.GammaTransform)
         self.BtnGammaTras.pack()
-        # MSRCR算法
-        self.BtnMSRCR = Button(self.Bright, text='MSRCR算法', command=self.MSRCR)
+        # SSR算法
+        self.BtnMSRCR = Button(self.Bright, text='SSR算法', command=self.MSRCR)
         self.BtnMSRCR.pack(pady=10)
 
     def SetMainWindow(self):
         self.title("图像增强系统v1.2")
-        self.geometry('500x400')
+        self.geometry('310x310')
         self.iconbitmap(r'C:\Users\lenovo\Desktop\thing\project\image\toolbox.ico')
 
     def OpenImg(self):
@@ -113,6 +121,7 @@ class MainSystem(tkinter.Tk):
         if self.img_bgr is None:
             messagebox.showerror(title='提示信息', message='读取图像失败')
         else:
+            self.img_current = self.img_gray
             cv2.imshow("image", self.img_bgr)
 
     def SaveImg(self):
@@ -185,8 +194,47 @@ class MainSystem(tkinter.Tk):
         self.img_current = output
         cv2.imshow("GaussFilter", output)
 
-    def WienerFilter(self):
-        pass
+    def WienerFilter(self, K=0.01):
+        img_fft = np.fft.fft2(self.img_gray)
+        kernel_fft = np.fft.fft2(self.motionkernel) + 1e-3
+        kernel_fft = np.conj(kernel_fft) / (np.abs(kernel_fft) ** 2 + K)
+        output = np.fft.ifft2(img_fft * kernel_fft)
+        output = np.abs(np.fft.fftshift(output))
+        self.img_noise_shake = output
+        cv2.imshow("Motionblur", output)
+
+    def getMotionKernel(self, angle=60):
+        img_h = np.shape(self.img_gray)[0]
+        img_w = np.shape(self.img_gray)[1]
+        kernel = np.zeros((img_h, img_w))
+        center_position = (img_h - 1) / 2
+        slope_tan = math.tan(angle * math.pi / 180)
+        slope_cot = 1 / slope_tan
+        if slope_tan <= 1:
+            for i in range(15):
+                offset = round(i * slope_tan)     # ((center_position-i)*slope_tan)
+                kernel[int(center_position + offset), int(center_position - offset)] = 1
+                kernel = kernel / kernel.sum()  # 归一化
+                self.motionkernel = kernel
+            return kernel
+        else:
+            for i in range(15):
+                offset = round(i * slope_cot)
+                kernel[int(center_position - offset), int(center_position + offset)] = 1
+                kernel = kernel / kernel.sum()
+                self.motionkernel = kernel
+            return kernel
+
+    def makeMotionBlur(self):
+        self.getMotionKernel()
+        img_fft = np.fft.fft2(self.img_gray)  # 进行二维数组的傅里叶变换
+        kernel_fft = np.fft.fft2(self.motionkernel) + 1e-3
+        blurred = np.fft.ifft2(img_fft * kernel_fft)
+        blurred = np.abs(np.fft.fftshift(blurred))
+        self.img_noise_shake = blurred
+        cv2.imshow("MotionBlur", blurred)
+
+
 
     def EroImg(self):
         kernel = np.ones((5, 5), dtype=np.uint8)  # 设置腐蚀核的大小
@@ -250,18 +298,6 @@ class MainSystem(tkinter.Tk):
         self.img_current = output
         cv2.imshow("dst", output)
 
-    def AdaptiveEquColor_2(self):  # 有待改进
-        ycrcb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2YCR_CB)
-        channels = cv2.split(ycrcb)
-
-        clahe = cv2.createCLAHE(clipLimit=5.0, tileGridSize=(8, 8))
-        clahe.apply(channels[0], channels[0])
-
-        cv2.merge(channels, ycrcb)
-        output = cv2.cvtColor(ycrcb, cv2.COLOR_YCR_CB2BGR)
-        self.img_current = output
-        cv2.imshow("dst", output)
-
     # RF:A Multiscale Retinex for Bridging the Gap Between Color Images and the Human Observation of Scenes
     def MSRCR(self, beta=46.0, alpha=125.0, G=5.0, b=25.0, low_clip=0.01, high_clip=0.99):
 
@@ -316,12 +352,55 @@ class MainSystem(tkinter.Tk):
 
         kernel = kernel / degree
         # 将卷积核应用到图像上，并转化为uint8
-        output = cv2.filter2D(self.img_bgr, -1, kernel)
+        output = cv2.filter2D(self.img_gray, -1, kernel)
         cv2.normalize(output, output, 0, 255, cv2.NORM_MINMAX)
         output = np.array(output, dtype=np.uint8)
         self.img_noise_shake = output
         self.img_current = output
         cv2.imshow("Motion Blur", output)
+
+    def getEntropy(self):
+        """
+        param: img:narray 二维灰度图像
+        return: float 图像约清晰越大,图像的信息熵
+        """
+        out = 0
+        count = np.shape(self.img_current)[0] * np.shape(self.img_current)[1]
+        p = np.bincount(np.array(self.img_current).flatten())
+        for i in range(0, len(p)):
+            if p[i] != 0:
+                out -= p[i] * math.log(p[i] / count) / count
+        print(out)
+
+    def getPSNR(self):
+        img_1 = cv2.cvtColor(self.img_current, cv2.COLOR_BGR2GRAY)
+        img_2 = self.img_gray
+        psnr = cv2.PSNR(img_1, img_2)
+        print("PSNR IS: ", psnr)
+
+    def getVariance(self):
+        """
+        :param img:narray 二维灰度图像
+        :return: float 图像约清晰越大,标准差
+        """
+        out = 0
+        if np.ndim(self.img_current)==3:
+            cv2.cvtColor(self.img_current, cv2.COLOR_BGR2GRAY)
+        u = np.mean(self.img_current)
+        size = np.shape(self.img_current)[0] * np.shape(self.img_current)[1]
+        shape = np.shape(self.img_current)
+        for x in range(0, shape[0]):
+            for y in range(0, shape[1]):
+                out += (self.img_current[x, y] - u) ** 2
+        out = np.sqrt(out /size)
+        print(out)
+
+    def getMean(self):
+        if np.ndim(self.img_current)==3:
+            cv2.cvtColor(self.img_current, cv2.COLOR_BGR2GRAY)
+        mean = np.mean(self.img_current)
+        print(mean)
+
 
 
 if __name__ == "__main__":

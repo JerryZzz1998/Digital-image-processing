@@ -1,8 +1,7 @@
 import  cv2
 import math
 import numpy as np
-import skimage
-from skimage.measure import compare_ssim
+
 
 
 def getPSNR(img_1, img_2):
@@ -27,8 +26,6 @@ def getEntropy(img):
 
 def getMean(img):
     mean = np.mean(img)
-    img_size = np.shape(img)[0] * np.shape(img)[1]
-    mean = mean / img_size
     return mean
 
 
@@ -46,10 +43,8 @@ def variance(img):
     return out
 
 
-def getSSIM(img_1, img_2):
-    ssim = compare_ssim(img_1, img_2)
-    return ssim
 
 
 if __name__ == "__main__":
-    img_src = cv2.imread(r'C:/Users/lenovo/Desktop/src/src.jpg', 0)  # 读取灰度图像
+    img_gray = cv2.imread(r'C:/Users/lenovo/Desktop/src/src.jpg', 0)  # 读取灰度图像
+    img_bgr = cv2.imread(r'C:/Users/lenovo/Desktop/thing/project/image/chip.png')
