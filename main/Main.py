@@ -141,15 +141,14 @@ class MainSystem(tkinter.Tk):
     def OpenImg(self):
         self.FilePath = filedialog.askopenfilename(parent=self, title='打开图片')
         self.img_bgr = cv2.imread(self.FilePath)
+        self.img_rgb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2RGB)
+        self.img_gray = cv2.imread(self.FilePath, cv2.IMREAD_GRAYSCALE)
+        self.img_b, self.img_g, self.img_r = cv2.split(self.img_bgr)  # 通道拆分
         if self.img_bgr is None:
             messagebox.showerror(title='提示信息', message='读取图像失败')
         else:
             self.img_current = self.img_gray
             cv2.imshow("image", self.img_bgr)
-        self.img_rgb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2RGB)
-        self.img_gray = cv2.imread(self.FilePath, cv2.IMREAD_GRAYSCALE)
-        self.img_b, self.img_g, self.img_r = cv2.split(self.img_bgr)  # 通道拆分
-
 
 
     def SaveImg(self):
@@ -416,7 +415,6 @@ class MainSystem(tkinter.Tk):
         for i in range(0, len(p)):
             if p[i] != 0:
                 out -= p[i] * math.log(p[i] / count) / count
-        print(out)
         self.entropy.set('信息熵：'+str(round(out, 2)))
 
     def getPSNR(self):
@@ -442,7 +440,7 @@ class MainSystem(tkinter.Tk):
                 out += (self.img_current[x, y] - u) ** 2
         out = np.sqrt(out /size)
         out = np.mean(out)
-        print(out)
+        self.variance.set('标准差：'+str(round(out, 2)))
 
     def getMean(self):
         if np.ndim(self.img_current)==3:
