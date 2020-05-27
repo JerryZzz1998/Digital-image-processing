@@ -6,6 +6,7 @@ from tkinter import messagebox
 import cv2
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -24,6 +25,15 @@ class MainSystem(tkinter.Tk):
         self.img_noise_shake = None
         self.img_current = None  # 用于保存图片
         self.motionkernel = None
+        # 设置评价指标
+        self.PSNR = StringVar()
+        self.PSNR.set('峰值信噪比：')
+        self.entropy = StringVar()
+        self.entropy.set('信息熵：')
+        self.variance = StringVar()
+        self.variance.set('标准差：')
+        self.mean = StringVar()
+        self.mean.set('亮度均值：')
         # 设置窗口属性
         self.SetMainWindow()
         # 创建主菜单
@@ -33,10 +43,8 @@ class MainSystem(tkinter.Tk):
         self.FileMenu.add_command(label='打开图片', command=self.OpenImg)
         self.FileMenu.add_command(label='保存图片', command=self.SaveImg)
         self.FileMenu.add_separator()
-        self.FileMenu.add_command(label='退出')
+        self.FileMenu.add_command(label='退出', command=self.quit)
         self.SetMenu = tkinter.Menu(self.BigMenu, tearoff=0)
-        self.SetMenu.add_command(label='二值化')
-        self.SetMenu.add_separator()
         self.SetMenu.add_command(label='添加椒盐噪声', command=self.SaltAndPepperNoise)
         self.SetMenu.add_command(label='添加高斯噪声', command=self.GaussianNoise)
         self.SetMenu.add_command(label='仿运动模糊', command=self.makeMotionBlur)
@@ -52,9 +60,28 @@ class MainSystem(tkinter.Tk):
         # 将主菜单加入到界面
         self.config(menu=self.BigMenu)
 
+        # 设置评价指标
+        # self.textLabel = Label(self, text='评价指标\n峰值信噪比：\n亮度均值：\n信息熵：\n标准差：',
+        #                        justify=LEFT)
+
+        # self.textLabel.grid(column=0, row=1)
+
+        # 设置指标的数值
+        self.psnrLabel = Label(self, textvariable=self.PSNR)
+        self.psnrLabel.grid(column=1, row=1, pady=10)
+
+        self.meanLabel = Label(self, textvariable=self.mean)
+        self.meanLabel.grid(column=1, row=2)
+
+        self.entropyLabel = Label(self, textvariable=self.entropy)
+        self.entropyLabel.grid(column=1, row=3, pady=10)
+
+        self.varianceLable = Label(self, textvariable=self.variance)
+        self.varianceLable.grid(column=1, row=4)
+
         # 图像的平滑操作
         self.SmoothImg = LabelFrame(self, text='平滑操作', labelanchor='n', padx=10, pady=10)
-        self.SmoothImg.grid(column=0, row=0, sticky='n')
+        self.SmoothImg.grid(column=0, row=0, sticky='n', padx=10)
         # 均值滤波按钮
         self.BtnMeanFil = tkinter.Button(self.SmoothImg, text='均值滤波', command=self.MeanFilter)
         self.BtnMeanFil.pack()
@@ -70,59 +97,60 @@ class MainSystem(tkinter.Tk):
 
         # 图像的形态学操作
         self.Morphology = LabelFrame(self, text='形态学操作', labelanchor='n', padx=10, pady=10)
-        self.Morphology.grid(column=1, row=0, sticky='n')
+        self.Morphology.grid(column=1, row=0, sticky='n', padx=20)
         # 腐蚀
-        self.BtnEroImg = tkinter.Button(self.Morphology, text='腐蚀', command=self.EroImg)
+        self.BtnEroImg = tkinter.Button(self.Morphology, text='腐蚀', command=self.EroImg, width=5)
         self.BtnEroImg.pack()
         # 膨胀
-        self.BtnDilateImg = tkinter.Button(self.Morphology, text='膨胀', command=self.DilateImg)
+        self.BtnDilateImg = tkinter.Button(self.Morphology, text='膨胀', command=self.DilateImg, width=5)
         self.BtnDilateImg.pack(pady=10)
         # 开运算
-        self.BtnOpen = tkinter.Button(self.Morphology, text='开运算', command=self.OpenProcess)
+        self.BtnOpen = tkinter.Button(self.Morphology, text='开运算', command=self.OpenProcess, width=5)
         self.BtnOpen.pack()
         # 闭运算
-        self.BtnClose = tkinter.Button(self.Morphology, text='闭运算', command=self.CloseProcess)
+        self.BtnClose = tkinter.Button(self.Morphology, text='闭运算', command=self.CloseProcess, width=5)
         self.BtnClose.pack(pady=10)
         # 礼帽运算
-        self.BtnTopHat = tkinter.Button(self.Morphology, text='礼帽运算', command=self.TopHat)
-        self.BtnTopHat.pack()
+     #   self.BtnTopHat = tkinter.Button(self.Morphology, text='礼帽运算', command=self.TopHat)
+     #   self.BtnTopHat.pack()
         # 黑帽运算
-        self.BtnBlackHat = tkinter.Button(self.Morphology, text='黑帽运算', command=self.BlackHat)
-        self.BtnBlackHat.pack(pady=10)
+     #   self.BtnBlackHat = tkinter.Button(self.Morphology, text='黑帽运算', command=self.BlackHat)
+     #   self.BtnBlackHat.pack(pady=10)
 
         # 亮度增强
         self.Bright = LabelFrame(self, text='亮度增强', labelanchor='n', padx=10, pady=10)
-        self.Bright.grid(column=2, row=0, sticky='n')
+        self.Bright.grid(column=2, row=0, sticky='n', padx=10)
         # 直方图均衡
-        self.BtnEquColor = tkinter.Button(self.Bright, text='直方图均衡', command=self.EquColor)
+        self.BtnEquColor = tkinter.Button(self.Bright, text='直方图均衡', command=self.EquColor, width=14)
         self.BtnEquColor.pack()
         # 自适应直方图均衡
-        self.BtnApEquColor = tkinter.Button(self.Bright, text='自适应直方图均衡', command=self.AdaptiveEquColor)
+        self.BtnApEquColor = tkinter.Button(self.Bright, text='自适应直方图均衡', command=self.AdaptiveEquColor, width=14)
         self.BtnApEquColor.pack(pady=10)
         # 伽马变换
-        self.BtnGammaTras = Button(self.Bright, text='伽马变换', command=self.GammaTransform)
+        self.BtnGammaTras = Button(self.Bright, text='伽马变换', command=self.GammaTransform, width=14)
         self.BtnGammaTras.pack()
         # SSR算法
-        self.BtnMSRCR = Button(self.Bright, text='SSR算法', command=self.MSRCR)
+        self.BtnMSRCR = Button(self.Bright, text='SSR算法', command=self.MSRCR, width=14)
         self.BtnMSRCR.pack(pady=10)
 
     def SetMainWindow(self):
-        self.title("图像增强系统v1.2")
-        self.geometry('310x310')
+        self.title("工业图像增强系统")
+        self.geometry('370x370')
         self.iconbitmap(r'C:\Users\lenovo\Desktop\thing\project\image\toolbox.ico')
 
     def OpenImg(self):
         self.FilePath = filedialog.askopenfilename(parent=self, title='打开图片')
         self.img_bgr = cv2.imread(self.FilePath)
-        self.img_rgb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2RGB)
-        self.img_gray = cv2.imread(self.FilePath, cv2.IMREAD_GRAYSCALE)
-        self.img_b, self.img_g, self.img_r = cv2.split(self.img_bgr)  # 通道拆分
-
         if self.img_bgr is None:
             messagebox.showerror(title='提示信息', message='读取图像失败')
         else:
             self.img_current = self.img_gray
             cv2.imshow("image", self.img_bgr)
+        self.img_rgb = cv2.cvtColor(self.img_bgr, cv2.COLOR_BGR2RGB)
+        self.img_gray = cv2.imread(self.FilePath, cv2.IMREAD_GRAYSCALE)
+        self.img_b, self.img_g, self.img_r = cv2.split(self.img_bgr)  # 通道拆分
+
+
 
     def SaveImg(self):
         if self.img_current is None:
@@ -176,7 +204,16 @@ class MainSystem(tkinter.Tk):
         else:
             output = cv2.blur(self.img_bgr, (5, 5))
         self.img_current = output
-        cv2.imshow("MeanFilter", output)
+        self.img_noise = cv2.cvtColor(self.img_noise, cv2.COLOR_BGR2RGB)
+        self.img_current = cv2.cvtColor(self.img_current, cv2.COLOR_BGR2RGB)
+        plt.figure("均值滤波")
+        plt.subplot(131)
+        plt.imshow(self.img_rgb), plt.axis('off'), plt.title('Src')
+        plt.subplot(132)
+        plt.imshow(self.img_noise), plt.axis('off'), plt.title('Noise')
+        plt.subplot(133)
+        plt.imshow(self.img_current), plt.axis('off'), plt.title('MeanFilter')
+        plt.show()
 
     def MedianFilter(self):
         if self.img_noise is not None:
@@ -184,7 +221,17 @@ class MainSystem(tkinter.Tk):
         else:
             output = cv2.medianBlur(self.img_bgr, 3)
         self.img_current = output
-        cv2.imshow("MedianFilter", output)
+        self.img_noise = cv2.cvtColor(self.img_noise, cv2.COLOR_BGR2RGB)
+        self.img_current = cv2.cvtColor(self.img_current, cv2.COLOR_BGR2RGB)
+        plt.figure("中值滤波")
+        plt.subplot(131)
+        plt.imshow(self.img_rgb), plt.axis('off'), plt.title('Src')
+        plt.subplot(132)
+        plt.imshow(self.img_noise), plt.axis('off'), plt.title('Noise')
+        plt.subplot(133)
+        plt.imshow(self.img_current), plt.axis('off'), plt.title('MedianFilter')
+        plt.show()
+
 
     def GaussFilter(self):
         if self.img_noise is not None:
@@ -192,47 +239,46 @@ class MainSystem(tkinter.Tk):
         else:
             output = cv2.GaussianBlur(self.img_bgr, (7, 7), 0, 0)
         self.img_current = output
-        cv2.imshow("GaussFilter", output)
+        self.img_noise = cv2.cvtColor(self.img_noise, cv2.COLOR_BGR2RGB)
+        self.img_current = cv2.cvtColor(self.img_current, cv2.COLOR_BGR2RGB)
+        plt.figure("高斯滤波")
+        plt.subplot(131)
+        plt.imshow(self.img_rgb), plt.axis('off'), plt.title('Src')
+        plt.subplot(132)
+        plt.imshow(self.img_noise), plt.axis('off'), plt.title('Noise')
+        plt.subplot(133)
+        plt.imshow(self.img_current), plt.axis('off'), plt.title('GaussFilter')
+        plt.show()
 
     def WienerFilter(self, K=0.01):
-        img_fft = np.fft.fft2(self.img_gray)
-        kernel_fft = np.fft.fft2(self.motionkernel) + 1e-3
-        kernel_fft = np.conj(kernel_fft) / (np.abs(kernel_fft) ** 2 + K)
-        output = np.fft.ifft2(img_fft * kernel_fft)
-        output = np.abs(np.fft.fftshift(output))
-        self.img_noise_shake = output
-        cv2.imshow("Motionblur", output)
+        pass
 
     def getMotionKernel(self, angle=60):
-        img_h = np.shape(self.img_gray)[0]
-        img_w = np.shape(self.img_gray)[1]
-        kernel = np.zeros((img_h, img_w))
-        center_position = (img_h - 1) / 2
-        slope_tan = math.tan(angle * math.pi / 180)
-        slope_cot = 1 / slope_tan
-        if slope_tan <= 1:
-            for i in range(15):
-                offset = round(i * slope_tan)     # ((center_position-i)*slope_tan)
-                kernel[int(center_position + offset), int(center_position - offset)] = 1
-                kernel = kernel / kernel.sum()  # 归一化
-                self.motionkernel = kernel
-            return kernel
-        else:
-            for i in range(15):
-                offset = round(i * slope_cot)
-                kernel[int(center_position - offset), int(center_position + offset)] = 1
-                kernel = kernel / kernel.sum()
-                self.motionkernel = kernel
-            return kernel
+        size = np.shape(self.img_current)[0] * np.shape(self.img_current)[1]
+        print(np.shape(self.img_current)[0])
+        PSF = np.zeros(size)   # 点扩散函数
+        x_center = (np.shape(self.img_current)[0] - 1) / 2
+        y_center = (np.shape(self.img_current)[1] - 1) / 2
+
+        sin_val = math.sin(angle * math.pi / 180)
+        cos_val = math.cos(angle * math.pi / 180)
+
+        # 将对应角度上motion_dis个点置成1
+        for i in range(15):
+            x_offset = round(sin_val * i)
+            y_offset = round(cos_val * i)
+            PSF[int(x_center - x_offset), int(y_center + y_offset)] = 1
+        PSF = PSF / PSF.sum()  # 归一化
+        self.motionkernel = PSF
+        return PSF
+
 
     def makeMotionBlur(self):
-        self.getMotionKernel()
-        img_fft = np.fft.fft2(self.img_gray)  # 进行二维数组的傅里叶变换
-        kernel_fft = np.fft.fft2(self.motionkernel) + 1e-3
-        blurred = np.fft.ifft2(img_fft * kernel_fft)
-        blurred = np.abs(np.fft.fftshift(blurred))
-        self.img_noise_shake = blurred
-        cv2.imshow("MotionBlur", blurred)
+        kernel = self.getMotionKernel()
+        dst = np.zeros(kernel.shape)
+        norm_psf = cv2.normalize(kernel, dst, 1.0, 0.0, cv2.NORM_MINMAX)
+        cv2.imshow('psf', (norm_psf * 255).astype(np.uint8))
+
 
 
 
@@ -371,12 +417,14 @@ class MainSystem(tkinter.Tk):
             if p[i] != 0:
                 out -= p[i] * math.log(p[i] / count) / count
         print(out)
+        self.entropy.set('信息熵：'+str(round(out, 2)))
 
     def getPSNR(self):
         img_1 = cv2.cvtColor(self.img_current, cv2.COLOR_BGR2GRAY)
         img_2 = self.img_gray
         psnr = cv2.PSNR(img_1, img_2)
-        print("PSNR IS: ", psnr)
+        self.PSNR.set("峰值信噪比："+str(round(psnr, 2)))
+
 
     def getVariance(self):
         """
@@ -393,13 +441,14 @@ class MainSystem(tkinter.Tk):
             for y in range(0, shape[1]):
                 out += (self.img_current[x, y] - u) ** 2
         out = np.sqrt(out /size)
+        out = np.mean(out)
         print(out)
 
     def getMean(self):
         if np.ndim(self.img_current)==3:
             cv2.cvtColor(self.img_current, cv2.COLOR_BGR2GRAY)
         mean = np.mean(self.img_current)
-        print(mean)
+        self.mean.set('亮度均值：'+str(round(mean,2)))
 
 
 
